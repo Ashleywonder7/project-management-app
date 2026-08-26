@@ -1,0 +1,184 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  PROJECT_MANAGER
+  STAFF
+  REVIEWER
+}
+
+enum ProjectStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum TaskStatus {
+  TO_DO
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model User {
+  id           String   @id @default(uuid())
+  staffId      String   @unique
+  firstName    String
+  lastName     String
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  department   String
+  jobTitle     String
+  role         Role     @default(STAFF)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relationships
+  managedProjects Project[]       @relation("ProjectManager")
+  createdProjects Project[]       @relation("ProjectCreator")
+  projectMembers  ProjectMember[]
+  
+  assignedTasks   Task[]          @relation("TaskAssignee")
+  reviewedTasks   Task[]          @relation("TaskReviewer")
+  createdTasks    Task[]          @relation("TaskCreator")
+
+  assignedSubtasks Subtask[]      @relation("SubtaskAssignee")
+  reviewedSubtasks Subtask[]      @relation("SubtaskReviewer")
+  createdSubtasks  Subtask[]      @relation("SubtaskCreator")
+
+  comments        Comment[]
+  activityLogs    ActivityLog[]
+
+  @@map("users")
+}
+
+model Project {
+  id            String        @id @default(uuid())
+  projectCode   String        @unique
+  name          String
+  description   String?
+  managerId     String
+  manager       User          @relation("ProjectManager", fields: [managerId], references: [id])
+  createdById   String
+  createdBy     User          @relation("ProjectCreator", fields: [createdById], references: [id])
+  startDate     DateTime
+  dueDate       DateTime
+  status        ProjectStatus @default(NOT_STARTED)
+  priority      Priority      @default(MEDIUM)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  members      ProjectMember[]
+  tasks        Task[]
+  activityLogs ActivityLog[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  taskCode    String     @unique
+  projectId   String
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  assigneeId  String?
+  assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  reviewerId  String?
+  reviewer    User?      @relation("TaskReviewer", fields: [reviewerId], references: [id])
+  createdById String
+  createdBy   User       @relation("TaskCreator", fields: [createdById], references: [id])
+  startDate   DateTime
+  dueDate     DateTime
+  status      TaskStatus @default(TO_DO)
+  priority    Priority   @default(MEDIUM)
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  subtasks Subtask[]
+
+  @@map("tasks")
+}
+
+model Subtask {
+  id          String     @id @default(uuid())
+  subtaskCode String     @unique
+  taskId      String
+  task        Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  assigneeId  String?
+  assignee    User?      @relation("SubtaskAssignee", fields: [assigneeId], references: [id])
+  reviewerId  String?
+  reviewer    User?      @relation("SubtaskReviewer", fields: [reviewerId], references: [id])
+  createdById String
+  createdBy   User       @relation("SubtaskCreator", fields: [createdById], references: [id])
+  startDate   DateTime
+  dueDate     DateTime
+  status      TaskStatus @default(TO_DO)
+  priority    Priority   @default(MEDIUM)
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  comments Comment[]
+
+  @@map("subtasks")
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  subtaskId String
+  subtask   Subtask   @relation(fields: [subtaskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  isEdited  Boolean   @default(false)
+  editedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("comments")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  action    String
+  details   String
+  createdAt DateTime @default(now())
+
+  @@map("activity_logs")
+}
