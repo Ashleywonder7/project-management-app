@@ -1,23 +1,27 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import './index.css';
+import { CommentItem } from './components/comments/CommentItem';
+
+
+// Sample data to preview your comment component
+const mockComment = {
+  id: '1',
+  content: 'Testing the deployed front-end comment component!',
+  createdAt: new Date().toISOString(),
+  isEdited: false,
+  authorId: 'user-1',
+  author: { id: 'user-1', firstName: 'John', lastName: 'Doe' },
+};
 
 export function App() {
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-8 flex flex-col items-center justify-center">
-      <h1 className="text-3xl font-bold text-indigo-400 mb-2">
-        Project Management App
-      </h1>
-      <p className="text-slate-400">Frontend mounted successfully!</p>
+    <div className="max-w-2xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">Project Management App</h1>
+      <CommentItem 
+        comment={mockComment} 
+        currentUserId="user-1" 
+        onCommentUpdated={() => console.log('Updated!')} 
+      />
     </div>
-  );
-}
-
-// Bootstrap React into the DOM
-const rootElement = document.getElementById('root');
-if (rootElement) {
-  ReactDOM.createRoot(rootElement).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
   );
 }
