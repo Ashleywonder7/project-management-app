@@ -14,7 +14,7 @@ interface CommentProps {
     id: string;
     content: string;
     createdAt: string;
-    isEdited: Boolean;
+    isEdited: boolean; // Fixed primitive type
     authorId: string;
     author: Author;
   };
@@ -27,6 +27,7 @@ export const CommentItem: React.FC<CommentProps> = ({ comment, currentUserId, on
   const [content, setContent] = useState(comment.content);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isAuthor = comment.authorId === currentUserId;
 
@@ -34,7 +35,7 @@ export const CommentItem: React.FC<CommentProps> = ({ comment, currentUserId, on
     const calculateTime = () => {
       const created = new Date(comment.createdAt).getTime();
       const expires = created + 15 * 60 * 1000;
-      const now = new Date().getTime();
+      const now = Date.now();
       const remainingSecs = Math.max(0, Math.floor((expires - now) / 1000));
       setTimeRemaining(remainingSecs);
     };
@@ -53,13 +54,21 @@ export const CommentItem: React.FC<CommentProps> = ({ comment, currentUserId, on
   };
 
   const handleUpdate = async () => {
+    if (!content.trim()) {
+      setError('Comment cannot be empty.');
+      return;
+    }
+
     try {
       setError(null);
+      setIsSubmitting(true);
       await API.put(`/comments/${comment.id}`, { content });
       setIsEditing(false);
       onCommentUpdated();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to edit comment');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -80,7 +89,8 @@ export const CommentItem: React.FC<CommentProps> = ({ comment, currentUserId, on
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            disabled={isSubmitting}
+            className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
             rows={3}
           />
           {error && <p className="text-xs text-red-400">{error}</p>}
@@ -90,16 +100,22 @@ export const CommentItem: React.FC<CommentProps> = ({ comment, currentUserId, on
             </span>
             <div className="flex gap-2">
               <button
-                onClick={() => setIsEditing(false)}
-                className="px-3 py-1 bg-slate-700 text-xs rounded hover:bg-slate-600 transition"
+                onClick={() => {
+                  setIsEditing(false);
+                  setContent(comment.content);
+                  setError(null);
+                }}
+                disabled={isSubmitting}
+                className="px-3 py-1 bg-slate-700 text-xs rounded hover:bg-slate-600 transition disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleUpdate}
-                className="px-3 py-1 bg-indigo-600 text-xs text-white rounded hover:bg-indigo-500 transition"
+                disabled={isSubmitting || timeRemaining <= 0}
+                className="px-3 py-1 bg-indigo-600 text-xs text-white rounded hover:bg-indigo-500 transition disabled:opacity-50"
               >
-                Save
+                {isSubmitting ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
