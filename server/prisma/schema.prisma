@@ -6,179 +6,240 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ==========================================
+// Enums
+// ==========================================
+
 enum Role {
   ADMIN
   PROJECT_MANAGER
   STAFF
-  REVIEWER
-}
-
-enum ProjectStatus {
-  NOT_STARTED
-  IN_PROGRESS
-  COMPLETED
-  ON_HOLD
-  CANCELLED
-}
-
-enum TaskStatus {
-  TO_DO
-  IN_PROGRESS
-  COMPLETED
 }
 
 enum Priority {
   LOW
   MEDIUM
   HIGH
-  CRITICAL
+  URGENT
 }
 
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+}
+
+enum EventStatus {
+  UPCOMING
+  DUE
+  OVERDUE
+  COMPLETED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+}
+
+enum NotificationType {
+  EMAIL_VERIFICATION
+  PHONE_VERIFICATION
+  DEADLINE_ALERT
+  PASSWORD_RESET
+}
+
+// ==========================================
+// Core User & Auth Models
+// ==========================================
+
 model User {
-  id           String   @id @default(uuid())
-  staffId      String   @unique
-  firstName    String
-  lastName     String
-  email        String   @unique
-  passwordHash String
-  phone        String?
-  department   String
-  jobTitle     String
-  role         Role     @default(STAFF)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                    String                 @id @default(uuid())
+  staffId               String                 @unique
+  firstName             String
+  lastName              String
+  email                 String                 @unique
+  isEmailVerified       Boolean                @default(false)
+  phoneNumber           String?                @unique
+  isPhoneVerified       Boolean                @default(false)
+  passwordHash          String
+  department            String
+  jobTitle              String
+  role                  Role                   @default(STAFF)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
 
-  // Relationships
-  managedProjects Project[]       @relation("ProjectManager")
-  createdProjects Project[]       @relation("ProjectCreator")
-  projectMembers  ProjectMember[]
-  
-  assignedTasks   Task[]          @relation("TaskAssignee")
-  reviewedTasks   Task[]          @relation("TaskReviewer")
-  createdTasks    Task[]          @relation("TaskCreator")
+  // Security & Notification Relations
+  tokens                VerificationToken[]
+  notificationLogs      NotificationLog[]
+  notificationRecipients NotificationConfigRecipient[]
 
-  assignedSubtasks Subtask[]      @relation("SubtaskAssignee")
-  reviewedSubtasks Subtask[]      @relation("SubtaskReviewer")
-  createdSubtasks  Subtask[]      @relation("SubtaskCreator")
+  // Project Relations
+  managedProjects       Project[]              @relation("ProjectManager")
+  assignedTasks         Task[]                 @relation("TaskAssignee")
+  createdTasks          Task[]                 @relation("TaskCreator")
 
-  comments        Comment[]
-  activityLogs    ActivityLog[]
+  // Event Relations
+  createdEvents         Event[]                @relation("EventCreator")
+  assignedEvents        EventStaffAssignment[]
 
   @@map("users")
 }
 
-model Project {
-  id            String        @id @default(uuid())
-  projectCode   String        @unique
-  name          String
-  description   String?
-  managerId     String
-  manager       User          @relation("ProjectManager", fields: [managerId], references: [id])
-  createdById   String
-  createdBy     User          @relation("ProjectCreator", fields: [createdById], references: [id])
-  startDate     DateTime
-  dueDate       DateTime
-  status        ProjectStatus @default(NOT_STARTED)
-  priority      Priority      @default(MEDIUM)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+model VerificationToken {
+  id         String           @id @default(uuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  tokenHash  String           @unique
+  code       String?          // 6-digit numeric OTP for SMS verification
+  expiresAt  DateTime
+  createdAt  DateTime         @default(now())
 
-  members      ProjectMember[]
-  tasks        Task[]
-  activityLogs ActivityLog[]
+  @@map("verification_tokens")
+  @@index([userId, type, expiresAt])
+}
+
+model NotificationConfig {
+  id                String              @id @default(uuid())
+  channel           NotificationChannel @unique
+  enabled           Boolean             @default(true)
+  leadNoticeDays    Int[]               @default([1, 3, 7])
+  notifyEngagements Boolean              @default(true)
+  notifyProposals   Boolean              @default(true)
+  notifyMeetings    Boolean              @default(true)
+  recipientRoles    String[]             @default(["ASSIGNED_STAFF", "PROJECT_MANAGER"])
+  recipients        NotificationConfigRecipient[]
+  updatedAt         DateTime             @updatedAt
+
+  @@map("notification_configs")
+}
+
+model NotificationConfigRecipient {
+  notificationConfigId String
+  userId               String
+  notificationConfig   NotificationConfig @relation(fields: [notificationConfigId], references: [id], onDelete: Cascade)
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([notificationConfigId, userId])
+  @@index([userId])
+  @@map("notification_config_recipients")
+}
+
+model NotificationLog {
+  id          String              @id @default(uuid())
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel     NotificationChannel
+  recipient   String
+  subject     String?
+  body        String
+  status      String              // "SENT", "FAILED", "DELIVERED"
+  sentAt      DateTime            @default(now())
+
+  @@map("notification_logs")
+  @@index([userId, sentAt])
+  @@index([channel, status, sentAt])
+}
+
+// ==========================================
+// Project Management Models
+// ==========================================
+
+model Project {
+  id          String        @id @default(uuid())
+  code        String        @unique
+  name        String
+  description String?
+  status      ProjectStatus @default(PLANNING)
+  startDate   DateTime
+  endDate     DateTime?
+  
+  managerId   String
+  manager     User          @relation("ProjectManager", fields: [managerId], references: [id])
+  
+  tasks       Task[]
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@map("projects")
 }
 
-model ProjectMember {
-  id        String   @id @default(uuid())
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([projectId, userId])
-  @@map("project_members")
-}
-
 model Task {
   id          String     @id @default(uuid())
-  taskCode    String     @unique
-  projectId   String
-  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskNumber  Int        @default(autoincrement())
   title       String
   description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?
+
+  projectId   String
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   assigneeId  String?
   assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  reviewerId  String?
-  reviewer    User?      @relation("TaskReviewer", fields: [reviewerId], references: [id])
+
   createdById String
   createdBy   User       @relation("TaskCreator", fields: [createdById], references: [id])
-  startDate   DateTime
-  dueDate     DateTime
-  status      TaskStatus @default(TO_DO)
-  priority    Priority   @default(MEDIUM)
-  completedAt DateTime?
+
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-
-  subtasks Subtask[]
 
   @@map("tasks")
 }
 
-model Subtask {
-  id          String     @id @default(uuid())
-  subtaskCode String     @unique
-  taskId      String
-  task        Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  assigneeId  String?
-  assignee    User?      @relation("SubtaskAssignee", fields: [assigneeId], references: [id])
-  reviewerId  String?
-  reviewer    User?      @relation("SubtaskReviewer", fields: [reviewerId], references: [id])
-  createdById String
-  createdBy   User       @relation("SubtaskCreator", fields: [createdById], references: [id])
-  startDate   DateTime
-  dueDate     DateTime
-  status      TaskStatus @default(TO_DO)
-  priority    Priority   @default(MEDIUM)
-  completedAt DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+// ==========================================
+// Event & Scheduling Models
+// ==========================================
 
-  comments Comment[]
+model Event {
+  id            String                 @id @default(uuid())
+  title         String
+  description   String?
+  venue         String
+  status        EventStatus            @default(UPCOMING)
+  completedAt   DateTime?
+  
+  createdById   String
+  createdBy     User                   @relation("EventCreator", fields: [createdById], references: [id])
+  
+  schedules     EventSchedule[]
+  assignedStaff EventStaffAssignment[]
 
-  @@map("subtasks")
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@map("events")
 }
 
-model Comment {
-  id        String    @id @default(uuid())
-  subtaskId String
-  subtask   Subtask   @relation(fields: [subtaskId], references: [id], onDelete: Cascade)
-  authorId  String
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  content   String
-  isEdited  Boolean   @default(false)
-  editedAt  DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@map("comments")
-}
-
-model ActivityLog {
+model EventSchedule {
   id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  action    String
-  details   String
-  createdAt DateTime @default(now())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  date      DateTime
+  startTime String
+  endTime   String
 
-  @@map("activity_logs")
+  @@map("event_schedules")
+}
+
+model EventStaffAssignment {
+  id      String @id @default(uuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_staff_assignments")
 }
