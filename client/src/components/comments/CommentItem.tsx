@@ -1,22 +1,18 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import API from '@/lib/api';
-
-interface Author {
-  id: string;
-  firstName: string;
-  lastName: string;
-}
+import axios from 'axios';
 
 interface CommentProps {
   comment: {
     id: string;
     content: string;
     createdAt: string;
-    isEdited: boolean; // Fixed primitive type
+    isEdited: boolean;
     authorId: string;
-    author: Author;
+    author: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    };
   };
   currentUserId: string;
   onCommentUpdated: () => void;
@@ -31,6 +27,7 @@ export const CommentItem: React.FC<CommentProps> = ({ comment, currentUserId, on
 
   const isAuthor = comment.authorId === currentUserId;
 
+  // Calculate remaining seconds out of 15 minutes (900 seconds)
   useEffect(() => {
     const calculateTime = () => {
       const created = new Date(comment.createdAt).getTime();
@@ -54,15 +51,12 @@ export const CommentItem: React.FC<CommentProps> = ({ comment, currentUserId, on
   };
 
   const handleUpdate = async () => {
-    if (!content.trim()) {
-      setError('Comment cannot be empty.');
-      return;
-    }
+    if (!content.trim()) return;
 
     try {
       setError(null);
       setIsSubmitting(true);
-      await API.put(`/comments/${comment.id}`, { content });
+      await axios.put(`/api/comments/${comment.id}`, { content });
       setIsEditing(false);
       onCommentUpdated();
     } catch (err: any) {
@@ -73,71 +67,64 @@ export const CommentItem: React.FC<CommentProps> = ({ comment, currentUserId, on
   };
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700/60 rounded-lg p-4 my-2 text-slate-100">
-      <div className="flex justify-between items-center mb-2">
-        <span className="font-semibold text-sm text-indigo-400">
-          {comment.author.firstName} {comment.author.lastName}
-        </span>
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span>{new Date(comment.createdAt).toLocaleString('en-GB')}</span>
-          {comment.isEdited && <span className="italic text-slate-500">(Edited)</span>}
+  <div className="bg-white border border-slate-200 rounded-xl p-4 my-2 text-slate-800 shadow-sm">
+    {/* Header */}
+    <div className="flex justify-between items-center mb-2">
+      <span className="font-bold text-sm text-blue-700">
+        {comment.author.firstName} {comment.author.lastName}
+      </span>
+      <div className="flex items-center gap-2 text-xs text-slate-400">
+        <span>{new Date(comment.createdAt).toLocaleString('en-GB')}</span>
+        {comment.isEdited && <span className="italic text-slate-400">(Edited)</span>}
+      </div>
+    </div>
+
+    {/* Body / Editing View */}
+    {isEditing ? (
+      <div className="mt-2 space-y-2">
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          disabled={isSubmitting}
+          className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+          rows={3}
+        />
+        {error && <p className="text-xs text-red-500">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => {
+              setIsEditing(false);
+              setContent(comment.content);
+              setError(null);
+            }}
+            disabled={isSubmitting}
+            className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-200 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpdate}
+            disabled={isSubmitting}
+            className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition disabled:opacity-50"
+          >
+            {isSubmitting ? 'Saving...' : 'Save'}
+          </button>
         </div>
       </div>
-
-      {isEditing ? (
-        <div className="mt-2 space-y-2">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            disabled={isSubmitting}
-            className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
-            rows={3}
-          />
-          {error && <p className="text-xs text-red-400">{error}</p>}
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-amber-400 font-mono">
-              Window expires in: {formatCountdown(timeRemaining)}
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setIsEditing(false);
-                  setContent(comment.content);
-                  setError(null);
-                }}
-                disabled={isSubmitting}
-                className="px-3 py-1 bg-slate-700 text-xs rounded hover:bg-slate-600 transition disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdate}
-                disabled={isSubmitting || timeRemaining <= 0}
-                className="px-3 py-1 bg-indigo-600 text-xs text-white rounded hover:bg-indigo-500 transition disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : 'Save'}
-              </button>
-            </div>
+    ) : (
+      <div>
+        <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.content}</p>
+        {canEdit && (
+          <div className="mt-3 flex items-center justify-end pt-2 border-t border-slate-100">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+            >
+              Edit Comment
+            </button>
           </div>
-        </div>
-      ) : (
-        <div>
-          <p className="text-sm text-slate-300 whitespace-pre-wrap">{comment.content}</p>
-          {canEdit && (
-            <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-700/40">
-              <span className="text-xs text-slate-400 font-mono">
-                Editable for: {formatCountdown(timeRemaining)}
-              </span>
-              <button
-                onClick={() => setIsEditing(true)}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
-              >
-                Edit Comment
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
+        )}
+      </div>
+    )}
+  </div>
+);}
