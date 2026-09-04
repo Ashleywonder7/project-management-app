@@ -5,31 +5,45 @@ import authRoutes from './routes/auth.routes';
 import staffRoutes from './routes/staff.routes';
 import projectRoutes from './routes/project.routes';
 import taskRoutes from './routes/task.routes';
-import subtaskRoutes from './routes/subtask.routes';
-import commentRoutes from './routes/comment.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 
 dotenv.config();
 
 const app: Express = express();
-const port = process.env.PORT || 5000;
+const port = Number(process.env.PORT || 5000);
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
-app.use(express.json());
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-// Routes
+app.disable('x-powered-by');
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('CORS origin not allowed'));
+  },
+  credentials: true,
+}));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+
+app.get('/health', (_req, res) => res.json({ success: true, status: 'ok' }));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
-app.use('/api/subtasks', subtaskRoutes);
-app.use('/api/comments', commentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-// Global Error Middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  const status = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+app.use((_req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
+});
+
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  const status = Number(err?.statusCode || err?.status || 500);
+  if (status >= 500) console.error(err);
+  const message = status >= 500 ? 'Internal server error' : (err?.message || 'Request failed');
   res.status(status).json({ success: false, message });
 });
 
