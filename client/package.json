@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "prisma generate --schema=../server/prisma/schema.prisma --generator client && tsc && vite build",
+    "build": "npm ci --prefix ../server --include=dev && cd ../server && npx prisma generate && cd ../client && tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
