@@ -6,10 +6,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// ==========================================
-// Enums
-// ==========================================
-
 enum Role {
   ADMIN
   PROJECT_MANAGER
@@ -45,6 +41,12 @@ enum EventStatus {
   COMPLETED
 }
 
+enum ProposalStatus {
+  DRAFT
+  SUBMITTED
+  ACCEPTED
+}
+
 enum NotificationChannel {
   EMAIL
   SMS
@@ -56,10 +58,6 @@ enum NotificationType {
   DEADLINE_ALERT
   PASSWORD_RESET
 }
-
-// ==========================================
-// Core User & Auth Models
-// ==========================================
 
 model User {
   id                    String                 @id @default(uuid())
@@ -76,18 +74,16 @@ model User {
   role                  Role                   @default(STAFF)
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
-
   tokens                VerificationToken[]
   notificationLogs      NotificationLog[]
   notificationRecipients NotificationConfigRecipient[]
-
   managedProjects       Project[]              @relation("ProjectManager")
   assignedTasks         Task[]                 @relation("TaskAssignee")
   createdTasks          Task[]                 @relation("TaskCreator")
-
   createdEvents         Event[]                @relation("EventCreator")
   assignedEvents        EventStaffAssignment[]
-
+  createdProposals      Proposal[]             @relation("ProposalCreator")
+  assignedProposals     ProposalAssignment[]
   @@map("users")
 }
 
@@ -100,7 +96,6 @@ model VerificationToken {
   code       String?
   expiresAt  DateTime
   createdAt  DateTime         @default(now())
-
   @@map("verification_tokens")
   @@index([userId, type, expiresAt])
 }
@@ -116,7 +111,6 @@ model NotificationConfig {
   recipientRoles    String[]             @default(["ASSIGNED_STAFF", "PROJECT_MANAGER"])
   recipients        NotificationConfigRecipient[]
   updatedAt         DateTime             @updatedAt
-
   @@map("notification_configs")
 }
 
@@ -125,7 +119,6 @@ model NotificationConfigRecipient {
   userId               String
   notificationConfig   NotificationConfig @relation(fields: [notificationConfigId], references: [id], onDelete: Cascade)
   user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@id([notificationConfigId, userId])
   @@index([userId])
   @@map("notification_config_recipients")
@@ -141,15 +134,10 @@ model NotificationLog {
   body        String
   status      String
   sentAt      DateTime            @default(now())
-
   @@map("notification_logs")
   @@index([userId, sentAt])
   @@index([channel, status, sentAt])
 }
-
-// ==========================================
-// Project Management Models
-// ==========================================
 
 model Project {
   id          String        @id @default(uuid())
@@ -164,7 +152,6 @@ model Project {
   tasks       Task[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
-
   @@map("projects")
 }
 
@@ -184,13 +171,8 @@ model Task {
   createdBy   User       @relation("TaskCreator", fields: [createdById], references: [id])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-
   @@map("tasks")
 }
-
-// ==========================================
-// Event & Scheduling Models
-// ==========================================
 
 model Event {
   id            String                 @id @default(uuid())
@@ -205,7 +187,6 @@ model Event {
   assignedStaff EventStaffAssignment[]
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
-
   @@map("events")
 }
 
@@ -216,7 +197,6 @@ model EventSchedule {
   date      DateTime
   startTime String
   endTime   String
-
   @@map("event_schedules")
 }
 
@@ -226,7 +206,32 @@ model EventStaffAssignment {
   event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId  String
   user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@unique([eventId, userId])
   @@map("event_staff_assignments")
+}
+
+model Proposal {
+  id              String           @id @default(uuid())
+  code            String           @unique
+  title           String
+  description     String?
+  deadline        DateTime
+  status          ProposalStatus   @default(DRAFT)
+  comments        String?
+  createdById     String
+  createdBy       User             @relation("ProposalCreator", fields: [createdById], references: [id])
+  assignedStaff   ProposalAssignment[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  @@map("proposals")
+}
+
+model ProposalAssignment {
+  proposalId String
+  userId     String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([proposalId, userId])
+  @@index([userId])
+  @@map("proposal_assignments")
 }
