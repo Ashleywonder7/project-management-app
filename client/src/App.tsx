@@ -813,7 +813,7 @@ export default function App() {
             </div>
             <div>
               <span className="font-bold text-xl tracking-tight text-slate-900 block leading-none">Schedley</span>
-              <span className="text-[10px] font-semibold text-blue-600 tracking-wider uppercase">Audit Project Suite</span>
+              <span className="text-[10px] font-semibold text-blue-600 tracking-wider uppercase">Audit PM Suite</span>
             </div>
           </div>
 
@@ -1185,9 +1185,9 @@ function LoginView({
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="font-semibold text-slate-700">Password</label>
-                <button type="button" onClick={() => setIsForgotPassword(true)} className="text-[11px] text-blue-600 hover:underline font-semibold">
+                {/* <button type="button" onClick={() => setIsForgotPassword(true)} className="text-[11px] text-blue-600 hover:underline font-semibold">
                   Forgot Password?
-                </button>
+                </button> */}
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1367,7 +1367,7 @@ function ResetPasswordView({
         <div className="bg-white p-6 rounded-xl border text-center text-xs space-y-2">
           <AlertCircle className="w-8 h-8 text-red-500 mx-auto" />
           <h2 className="text-base font-bold text-slate-900">Invalid or Expired Reset Link</h2>
-          <p className="text-slate-500">Please request a new reset link from the login page or your Audit Project Manager.</p>
+          {/* <p className="text-slate-500">Please request a new reset link from the login page or your Audit Project Manager.</p> */}
         </div>
       </div>
     );
@@ -1581,7 +1581,7 @@ function DashboardView({
     <div className="space-y-6 max-w-7xl mx-auto pb-8">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-xs text-slate-500 mt-1">High-level workspace metrics, active timelines, and immediate focus areas.</p>
+        <p className="text-xs text-slate-500 mt-1">High-level view of your workspace.</p>
       </div>
 
       <div className="grid grid-cols-5 gap-4">
@@ -1601,7 +1601,7 @@ function DashboardView({
           className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs cursor-pointer hover:border-purple-300 transition"
         >
           <div className="flex justify-between items-start">
-            <span className="text-[11px] font-semibold text-slate-500">Pending/Active Proposals</span>
+            <span className="text-[11px] font-semibold text-slate-500">Total Pending Proposals</span>
             <FileText className="w-4 h-4 text-purple-600" />
           </div>
           <p className="text-2xl font-extrabold text-slate-900 mt-2">{activeProposalsCount}</p>
@@ -1962,7 +1962,7 @@ function SettingsView({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Mobile Phone (for SMS Alerts)</label>
+              <label className="block font-semibold text-slate-700 mb-1">Contact</label>
               <div className="relative">
                 <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+233..." className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-slate-800" />
                 {currentUser.isPhoneVerified ? (
@@ -2065,7 +2065,7 @@ function SettingsView({
       </form>
 
       {/* Admin Automated Alerts Form */}
-      {currentUser.role === 'ADMIN' && (
+      {/* {currentUser.role === 'ADMIN' && (
         <form onSubmit={handleConfigSubmit} className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-4 text-xs">
           <h3 className="font-bold text-slate-800 border-b pb-2 flex items-center gap-2 text-sm">
             <Bell className="w-4 h-4 text-blue-600" /> System Automated Alerts Configuration
@@ -2158,7 +2158,7 @@ function SettingsView({
             </button>
           </div>
         </form>
-      )}
+      )}*/}
     </div>
   );
 }
@@ -2234,7 +2234,7 @@ function MyTasksView({
     <div className="space-y-6 max-w-7xl mx-auto pb-8">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">My Tasks & Assignments</h1>
-        <p className="text-xs text-slate-500 mt-1">Consolidated view of all working papers, proposals, and meetings assigned to @{currentUser.nickname}.</p>
+        <p className="text-xs text-slate-500 mt-1">Consolidated view of all tasks, proposals and meetings assigned to @{currentUser.nickname}.</p>
       </div>
 
       <div className="flex items-center gap-2 bg-white p-2 border border-slate-200 rounded-xl shadow-xs">
@@ -2581,7 +2581,7 @@ function ProjectsView({
 
               <div className="space-y-2 text-xs text-slate-600 pt-3 border-t border-slate-100">
                 <div className="flex justify-between">
-                  <span className="text-slate-500 font-medium">Audit Project Manager:</span>
+                  <span className="text-slate-500 font-medium">Audit PM Suite</span>
                   <span className="font-semibold text-slate-900">
                     {manager ? `${manager.name}` : 'Unassigned'}
                   </span>
@@ -3611,9 +3611,9 @@ function ProjectFormModal({ initialData, staffMembers, onClose, onSave, showToas
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Audit Project Manager *</label>
+            <label className="block font-semibold text-slate-700 mb-1">Audit PM Suite *</label>
             <select required value={managerId} onChange={(e) => setManagerId(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white text-slate-800">
-              <option value="">Select Audit Project Manager from Directory...</option>
+              <option value="">Select Project Manager...</option>
               {staffMembers.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name} (@{m.nickname}) - {m.role}
