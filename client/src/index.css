@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+/* Keep browser password controls unobtrusive without relying on Tailwind arbitrary selectors. */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+}
+
+input::-webkit-reveal {
+  display: none;
+}
