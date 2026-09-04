@@ -1,6 +1,5 @@
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -79,17 +78,14 @@ model User {
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 
-  // Security & Notification Relations
   tokens                VerificationToken[]
   notificationLogs      NotificationLog[]
   notificationRecipients NotificationConfigRecipient[]
 
-  // Project Relations
   managedProjects       Project[]              @relation("ProjectManager")
   assignedTasks         Task[]                 @relation("TaskAssignee")
   createdTasks          Task[]                 @relation("TaskCreator")
 
-  // Event Relations
   createdEvents         Event[]                @relation("EventCreator")
   assignedEvents        EventStaffAssignment[]
 
@@ -102,7 +98,7 @@ model VerificationToken {
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   type       NotificationType
   tokenHash  String           @unique
-  code       String?          // 6-digit numeric OTP for SMS verification
+  code       String?
   expiresAt  DateTime
   createdAt  DateTime         @default(now())
 
@@ -115,7 +111,7 @@ model NotificationConfig {
   channel           NotificationChannel @unique
   enabled           Boolean             @default(true)
   leadNoticeDays    Int[]               @default([1, 3, 7])
-  notifyEngagements Boolean              @default(true)
+  notifyEngagements Boolean             @default(true)
   notifyProposals   Boolean              @default(true)
   notifyMeetings    Boolean              @default(true)
   recipientRoles    String[]             @default(["ASSIGNED_STAFF", "PROJECT_MANAGER"])
@@ -144,7 +140,7 @@ model NotificationLog {
   recipient   String
   subject     String?
   body        String
-  status      String              // "SENT", "FAILED", "DELIVERED"
+  status      String
   sentAt      DateTime            @default(now())
 
   @@map("notification_logs")
@@ -164,12 +160,9 @@ model Project {
   status      ProjectStatus @default(PLANNING)
   startDate   DateTime
   endDate     DateTime?
-  
   managerId   String
   manager     User          @relation("ProjectManager", fields: [managerId], references: [id])
-  
   tasks       Task[]
-
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -184,16 +177,12 @@ model Task {
   status      TaskStatus @default(TODO)
   priority    Priority   @default(MEDIUM)
   dueDate     DateTime?
-
   projectId   String
   project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
   assigneeId  String?
   assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
-
   createdById String
   createdBy   User       @relation("TaskCreator", fields: [createdById], references: [id])
-
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -211,13 +200,10 @@ model Event {
   venue         String
   status        EventStatus            @default(UPCOMING)
   completedAt   DateTime?
-  
   createdById   String
   createdBy     User                   @relation("EventCreator", fields: [createdById], references: [id])
-  
   schedules     EventSchedule[]
   assignedStaff EventStaffAssignment[]
-
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
 
